@@ -1,7 +1,6 @@
 class ApiResponse {
 
-    constructor(error, message) {
-        this.error = error;
+    constructor(message) {
         this.message = message;
     }
 

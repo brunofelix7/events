@@ -2,20 +2,24 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('../models/user');
+const Event = require('../models/event');
+const Special = require('../models/special');
 const ApiResponse = require('../models/api-response');
+
 require('../../config/database');
 
+/**Valida se as requisições estão vindo com o token */
 function verifyToken(req, res, next) {
 	if(!req.headers.authorization) {
-		return res.status(401).json('Unauthorized request');
+		return res.status(401).json(new ApiResponse('Unauthorized request'));
 	}
 	let token = req.headers.authorization.split(' ')[1];
 	if(token === 'null') {
-		return res.status(401).json('Unauthorized request');
+		return res.status(401).json(new ApiResponse('Unauthorized request'));
 	}
 	let payload = jwt.verify(token, 'secretKey');
 	if(!payload) {
-		return res.status(401).json('Unauthorized request');
+		return res.status(401).json(new ApiResponse('Unauthorized request'));
 	}
 	req.userId = payload.subject;
 	next();
@@ -23,29 +27,26 @@ function verifyToken(req, res, next) {
 
 /** Home resource */
 router.get('/', (req, res) => {
-	let welcome = {
-		'message': 'Welcome to events API'
-	};
-	res.json(welcome);
+	res.json(new ApiResponse('Welcome to events API'));
 });
 
 /** Register resource */
 router.post('/register', (req, res) => {
 	let data = req.body;
-	let user = new User(data);
-	user.save((error, registeredUser) => {
+	let obj = new User(data);
+	obj.save((error, user) => {
 		if (error) {
 			console.error(error);
 			return;
 		}
-		let payload = { subject: registeredUser._id };
+		let payload = { subject: user._id };
 		let token = jwt.sign(payload, 'secretKey');
 		res.status(201).json({ token });
 	});
 });
 
-/** Login resource */
-router.post('/login', (req, res) => {
+/** Auth post resource */
+router.post('/auth', (req, res) => {
 	let data = req.body;
 	User.findOne({ email: data.email }, (error, user) => {
 		if (error) {
@@ -53,11 +54,11 @@ router.post('/login', (req, res) => {
 			return;
 		}
 		if (!user) {
-			res.status(401).json(new ApiResponse('Unauthorized', 'Invalid email'));
+			res.status(401).json(new ApiResponse('Invalid email'));
 			return;
 		}
 		if (user.password !== data.password) {
-			res.status(401).json(new ApiResponse('Unauthorized', 'Invalid password'));
+			res.status(401).json(new ApiResponse('Invalid password'));
 			return;
 		}
 		let payload = { subject: user._id };
@@ -66,90 +67,63 @@ router.post('/login', (req, res) => {
 	});
 });
 
-/** Event resource */
-router.get('/events', verifyToken, (req, res) => {
-	let events = [
-		{
-			"_id": "1",
-			"name": "Auto Expo",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "2",
-			"name": "Auto Expo",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "3",
-			"name": "Auto Expo",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "4",
-			"name": "Auto Expo",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "5",
-			"name": "Auto Expo",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "6",
-			"name": "Auto Expo",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
+/** Auth get resource */
+router.get('/auth', verifyToken, (req, res) => {
+	User.findOne({ _id: req.userId }, (error, user) => {
+		if (error) {
+			console.error(error);
+			return;
 		}
-	]
-	res.json(events);
+		res.status(200).json(user);
+	}).select('-password');
 });
 
-/** Special resource */
-router.get('/special', verifyToken, (req, res) => {
-	let specialEvents = [
-		{
-			"_id": "1",
-			"name": "Auto Expo Special",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "2",
-			"name": "Auto Expo Special",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "3",
-			"name": "Auto Expo Special",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "4",
-			"name": "Auto Expo Special",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "5",
-			"name": "Auto Expo Special",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
-		},
-		{
-			"_id": "6",
-			"name": "Auto Expo Special",
-			"description": "lorem ipsum",
-			"date": "2012-04-23T18:25:43.511Z"
+/** event POST resource */
+router.post('/events', verifyToken, (req, res) => {
+	let data = req.body;
+	let obj = new Event(data);
+	obj.save((error, event) => {
+		if (error) {
+			console.error(error);
+			return;
 		}
-	]
-	res.json(specialEvents);
+		res.status(201).json({ event });
+	});
+});
+
+/** event GET resource */
+router.get('/events', verifyToken, (req, res) => {
+	Event.find((error, events) => {
+		if(error) {
+			console.log(error);
+			return;
+		}
+		res.status(200).json(events);
+	});
+});
+
+/** special POST resource */
+router.post('/special', verifyToken, (req, res) => {
+	let data = req.body;
+	let obj = new Special(data);
+	obj.save((error, special) => {
+		if(error) {
+			console.error(error);
+			return;
+		}
+		res.status(200).json(special);
+	});
+});
+
+/** special GET resource */
+router.get('/special', verifyToken, (req, res) => {
+	Special.find((error, special) => {
+		if(error) {
+			console.log(error);
+			return;
+		}
+		res.status(200).json(special);
+	});
 });
 
 module.exports = router;
