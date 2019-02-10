@@ -1,0 +1,19 @@
+//  Setup
+npm init --yes
+npm install --save express bpdy-parser
+npm install --save mongoose
+npm install --save cors
+npm install --save jsonwebtoken
+npm install --save md5
+
+//  Run API
+node server
+npm start server.js
+
+//  Suggestions
+Encrypt the password
+Do not return the password
+Improve registration
+Add error handling
+Create a new event
+Fetch events from database
